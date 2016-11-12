@@ -32,26 +32,26 @@ public struct Blueprint {
     self.resourceGroups = resourceGroups
   }
 
-  public init(ast:[String:AnyObject]) {
+  public init(ast:[String:Any]) {
     metadata = parseMetadata(ast["metadata"] as? [[String:String]])
     name = ast["name"] as? String ?? ""
     description = ast["description"] as? String
     resourceGroups = parseBlueprintResourceGroups(ast)
   }
 
-  public init?(named:String, bundle:NSBundle? = nil) {
-    func loadFile(named:String, bundle:NSBundle) -> [String:AnyObject]? {
-      if let url = bundle.URLForResource(named, withExtension: nil) {
-        if let data = NSData(contentsOfURL: url) {
-          let object: AnyObject? = try? NSJSONSerialization.JSONObjectWithData(data, options: NSJSONReadingOptions(rawValue: 0))
-          return object as? [String:AnyObject]
+  public init?(named:String, bundle:Bundle? = nil) {
+    func loadFile(_ named:String, bundle:Bundle) -> [String:Any]? {
+      if let url = bundle.url(forResource: named, withExtension: nil) {
+        if let data = try? Data(contentsOf: url) {
+          let object: Any? = try! JSONSerialization.jsonObject(with: data, options: JSONSerialization.ReadingOptions(rawValue: 0)) as Any?
+          return object as? [String:Any]
         }
       }
 
       return nil
     }
 
-    let ast = loadFile(named, bundle: bundle ?? NSBundle.mainBundle())
+    let ast = loadFile(named, bundle: bundle ?? Bundle.main)
     if let ast = ast {
       self.init(ast: ast)
     } else {
@@ -96,9 +96,9 @@ public struct Resource {
   /// Array of actions available on the resource each defining at least one complete HTTP transaction
   public let actions:[Action]
 
-  public let content:[[String:AnyObject]]
+  public let content:[[String:Any]]
 
-  public init(name:String, description:String?, uriTemplate:String, parameters:[Parameter], actions:[Action], content:[[String:AnyObject]]? = nil) {
+  public init(name:String, description:String?, uriTemplate:String, parameters:[Parameter], actions:[Action], content:[[String:Any]]? = nil) {
     self.name = name
     self.description = description
     self.uriTemplate = uriTemplate
@@ -165,9 +165,9 @@ public struct Action {
   /// HTTP transaction examples for the relevant HTTP request method
   public let examples:[TransactionExample]
 
-  public let content:[[String:AnyObject]]
+  public let content:[[String:Any]]
 
-  public init(name:String, description:String?, method:String, parameters:[Parameter], uriTemplate:String? = nil, relation:String? = nil, examples:[TransactionExample]? = nil, content:[[String:AnyObject]]? = nil) {
+  public init(name:String, description:String?, method:String, parameters:[Parameter], uriTemplate:String? = nil, relation:String? = nil, examples:[TransactionExample]? = nil, content:[[String:Any]]? = nil) {
     self.name = name
     self.description = description
     self.method = method
@@ -216,11 +216,11 @@ public struct Payload {
   public let headers:[Header]
 
   /// An entity body to be transferred with HTTP message represented by this payload
-  public let body:NSData?
+  public let body:Data?
 
-  public let content:[[String:AnyObject]]
+  public let content:[[String:Any]]
 
-  public init(name:String, description:String? = nil, headers:[Header]? = nil, body:NSData? = nil, content:[[String:AnyObject]]? = nil) {
+  public init(name:String, description:String? = nil, headers:[Header]? = nil, body:Data? = nil, content:[[String:Any]]? = nil) {
     self.name = name
     self.description = description
     self.headers = headers ?? []
@@ -232,7 +232,7 @@ public struct Payload {
 
 // MARK: AST Parsing
 
-func parseMetadata(source:[[String:String]]?) -> [Metadata] {
+func parseMetadata(_ source:[[String:String]]?) -> [Metadata] {
   if let source = source {
     return source.flatMap { item in
       if let name = item["name"] {
@@ -248,7 +248,7 @@ func parseMetadata(source:[[String:String]]?) -> [Metadata] {
   return []
 }
 
-func parseParameter(source:[[String:AnyObject]]?) -> [Parameter] {
+func parseParameter(_ source:[[String:Any]]?) -> [Parameter] {
   if let source = source {
     return source.map { item in
       let name = item["name"] as? String ?? ""
@@ -265,18 +265,18 @@ func parseParameter(source:[[String:AnyObject]]?) -> [Parameter] {
   return []
 }
 
-func parseActions(source:[[String:AnyObject]]?) -> [Action] {
+func parseActions(_ source:[[String:Any]]?) -> [Action] {
   if let source = source {
     return source.flatMap { item in
       let name = item["name"] as? String
       let description = item["description"] as? String
       let method = item["method"] as? String
-      let parameters = parseParameter(item["parameters"] as? [[String:AnyObject]])
+      let parameters = parseParameter(item["parameters"] as? [[String:Any]])
       let attributes = item["attributes"] as? [String:String]
       let uriTemplate = attributes?["uriTemplate"]
       let relation = attributes?["relation"]
-      let examples = parseExamples(item["examples"] as? [[String:AnyObject]])
-      let content = item["content"] as? [[String:AnyObject]]
+      let examples = parseExamples(item["examples"] as? [[String:Any]])
+      let content = item["content"] as? [[String:Any]]
 
       if let name = name {
         if let method = method {
@@ -291,13 +291,13 @@ func parseActions(source:[[String:AnyObject]]?) -> [Action] {
   return []
 }
 
-func parseExamples(source:[[String:AnyObject]]?) -> [TransactionExample] {
+func parseExamples(_ source:[[String:Any]]?) -> [TransactionExample] {
   if let source = source {
     return source.flatMap { item in
       let name = item["name"] as? String
       let description = item["description"] as? String
-      let requests = parsePayloads(item["requests"] as? [[String:AnyObject]])
-      let responses = parsePayloads(item["responses"] as? [[String:AnyObject]])
+      let requests = parsePayloads(item["requests"] as? [[String:Any]])
+      let responses = parsePayloads(item["responses"] as? [[String:Any]])
 
       if let name = name {
         return TransactionExample(name: name, description: description, requests: requests, responses: responses)
@@ -310,15 +310,15 @@ func parseExamples(source:[[String:AnyObject]]?) -> [TransactionExample] {
   return []
 }
 
-func parsePayloads(source:[[String:AnyObject]]?) -> [Payload] {
+func parsePayloads(_ source:[[String:Any]]?) -> [Payload] {
   if let source = source {
     return source.flatMap { item in
       let name = item["name"] as? String
       let description = item["description"] as? String
       let headers = parseHeaders(item["headers"] as? [[String:String]])
       let bodyString = item["body"] as? String
-      let body = bodyString?.dataUsingEncoding(NSUTF8StringEncoding, allowLossyConversion: true)
-      let content = item["content"] as? [[String:AnyObject]]
+      let body = bodyString?.data(using: String.Encoding.utf8, allowLossyConversion: true)
+      let content = item["content"] as? [[String:Any]]
 
       if let name = name {
         return Payload(name: name, description: description, headers: headers, body: body, content: content)
@@ -331,10 +331,10 @@ func parsePayloads(source:[[String:AnyObject]]?) -> [Payload] {
   return []
 }
 
-func parseHeaders(source:[[String:String]]?) -> [Payload.Header] {
+func parseHeaders(_ source:[[String:String]]?) -> [Payload.Header] {
   if let source = source {
     return source.flatMap { item in
-      if let name = item["name"], value = item["value"] {
+      if let name = item["name"], let value = item["value"] {
         return (name, value)
       }
 
@@ -345,15 +345,15 @@ func parseHeaders(source:[[String:String]]?) -> [Payload.Header] {
   return []
 }
 
-func parseResources(source:[[String:AnyObject]]?) -> [Resource] {
+func parseResources(_ source:[[String:Any]]?) -> [Resource] {
   if let source = source {
     return source.flatMap { item in
       let name = item["name"] as? String
       let description = item["description"] as? String
       let uriTemplate = item["uriTemplate"] as? String
-      let actions = parseActions(item["actions"] as? [[String:AnyObject]])
-      let parameters = parseParameter(item["parameters"] as? [[String:AnyObject]])
-      let content = item["content"] as? [[String:AnyObject]]
+      let actions = parseActions(item["actions"] as? [[String:Any]])
+      let parameters = parseParameter(item["parameters"] as? [[String:Any]])
+      let content = item["content"] as? [[String:Any]]
 
       if let name = name, let uriTemplate = uriTemplate {
         return Resource(name: name, description: description, uriTemplate: uriTemplate, parameters: parameters, actions: actions, content: content)
@@ -366,11 +366,11 @@ func parseResources(source:[[String:AnyObject]]?) -> [Resource] {
   return []
 }
 
-private func parseBlueprintResourceGroups(blueprint:[String:AnyObject]) -> [ResourceGroup] {
-  if let resourceGroups = blueprint["resourceGroups"] as? [[String:AnyObject]] {
+private func parseBlueprintResourceGroups(_ blueprint:[String:Any]) -> [ResourceGroup] {
+  if let resourceGroups = blueprint["resourceGroups"] as? [[String:Any]] {
     return resourceGroups.flatMap { dictionary in
       if let name = dictionary["name"] as? String {
-        let resources = parseResources(dictionary["resources"] as? [[String:AnyObject]])
+        let resources = parseResources(dictionary["resources"] as? [[String:Any]])
         let description = dictionary["description"] as? String
         return ResourceGroup(name: name, description: description, resources: resources)
       }
