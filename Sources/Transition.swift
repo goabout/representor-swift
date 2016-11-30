@@ -8,7 +8,7 @@
 
 import Foundation
 
-public struct InputProperty<T : AnyObject> : Equatable {
+public struct InputProperty<T : Any> : Equatable {
   public let title:String?
 
   public let defaultValue:T?
@@ -25,7 +25,7 @@ public struct InputProperty<T : AnyObject> : Equatable {
   }
 }
 
-public func ==<T : AnyObject>(lhs:InputProperty<T>, rhs:InputProperty<T>) -> Bool {
+public func ==<T : Any>(lhs:InputProperty<T>, rhs:InputProperty<T>) -> Bool {
   return (
     lhs.title == rhs.title &&
     lhs.defaultValue as? NSObject == rhs.defaultValue as? NSObject &&
@@ -34,14 +34,14 @@ public func ==<T : AnyObject>(lhs:InputProperty<T>, rhs:InputProperty<T>) -> Boo
   )
 }
 
-public typealias InputProperties = [String:InputProperty<AnyObject>]
+public typealias InputProperties = [String:InputProperty<Any>]
 
 /** Transition instances encapsulate information about interacting with links and forms. */
 public protocol TransitionType : Equatable, Hashable {
-  typealias Builder = TransitionBuilderType
+  associatedtype Builder = TransitionBuilderType
 
   init(uri:String, attributes:InputProperties?, parameters:InputProperties?)
-  init(uri:String, _ block:((builder:Builder) -> ()))
+  init(uri:String, _ block:((_ builder:Builder) -> ()))
 
   var uri:String { get }
 
